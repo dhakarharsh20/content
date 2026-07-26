@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Content Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://js.puter.com/v2/"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#0a0f1e;
+  --bg2:#111827;
+  --surface:rgba(255,255,255,0.04);
+  --bg:#ffffff;
+  --bg2:#f4f6f9;
+  --surface:rgba(31,58,95,0.05);
+  --surface2:rgba(31,58,95,0.09);
+  --surface3:rgba(31,58,95,0.14);
+  --border:rgba(28,28,28,0.12);
+  --border2:rgba(31,58,95,0.35);
+  --text:#1c1c1c;
+  --text2:#3a4a5c;
+  --text3:#8a9ab0;
+  --accent:#1f3a5f;
+  --accent2:#2e5490;
+  --accent-g:rgba(31,58,95,0.14);
+  --blue:#1f3a5f;
+  --violet:#3b5fa0;
+  --rose:#c0392b;
+  --amber:#d97706;
+  --orange:#c05621;
+  --red:#dc2626;
+  --green:#16a34a;
+  --cyan:#0e7490;
+  --nw:174px;
+  --nh:58px;
+  --r:12px;
+}
+
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Inter',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+
+/* ── Header ── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 28px;gap:16px;
+  background:rgba(255,255,255,0.92);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  z-index:100;flex-wrap:wrap;
+  box-shadow:0 1px 8px rgba(31,58,95,0.08);
+}
+.header-brand{display:flex;align-items:center;gap:14px;text-decoration:none}
+.header-logo{
+  height:44px;width:auto;object-fit:contain;
+  filter:drop-shadow(0 2px 10px rgba(255,193,7,0.35));
+  transition:transform .25s ease, filter .25s ease;
+}
+.header-logo:hover{
+  transform:scale(1.05);
+  filter:drop-shadow(0 4px 16px rgba(255,193,7,0.55));
+}
+header h1{
+  font-size:17px;font-weight:700;letter-spacing:-0.3px;
+  background:linear-gradient(135deg,var(--accent),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  white-space:nowrap;display:flex;align-items:center;gap:8px;
+}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;min-width:0;justify-content:flex-end}
+
+input[type=text]{
+  background:#fff;border:1px solid var(--border);
+  border-radius:10px;padding:10px 16px;color:var(--text);
+  font-size:13px;font-family:'Inter',sans-serif;outline:none;
+  min-width:220px;max-width:480px;flex:1;transition:all .25s;
+  box-shadow:inset 0 1px 3px rgba(28,28,28,0.06);
+}
+input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-g)}
+input::placeholder{color:var(--text3)}
+
+.btn{
+  padding:10px 20px;border-radius:10px;border:none;
+  font-size:13px;font-weight:600;cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all .2s;
+  display:flex;align-items:center;gap:7px;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-p{
+  background:linear-gradient(135deg,#1f3a5f,#2e5490);
+  color:#fff;box-shadow:0 4px 16px rgba(31,58,95,0.28);
+}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(31,58,95,0.38)}
+.btn-p:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-s{background:#fff;color:var(--text2);border:1px solid var(--border);box-shadow:0 1px 4px rgba(28,28,28,0.06)}
+.btn-s:hover{background:var(--surface2);color:var(--text);border-color:var(--border2)}
+
+/* ── Board ── */
+#app{height:100vh;height:100dvh;display:flex;flex-direction:column}
+#board{
+  flex:1;position:relative;overflow:hidden;touch-action:none;
+  background:
+    radial-gradient(ellipse at 50% 45%,rgba(31,58,95,0.04) 0%,transparent 60%),
+    var(--bg2);
+}
+#boardInner{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.grid-bg{
+  position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(31,58,95,0.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(31,58,95,0.06) 1px,transparent 1px);
+  background-size:40px 40px;
+}
+
+/* ── Nodes ── */
+.nd{
+  position:absolute;display:flex;align-items:center;gap:10px;
+  background:#fff;border:1px solid var(--border);
+  border-radius:var(--r);padding:8px 14px;
+  box-shadow:0 2px 12px rgba(28,28,28,0.08),0 1px 3px rgba(28,28,28,0.05);
+  cursor:pointer;z-index:10;min-width:var(--nw);height:var(--nh);
+  user-select:none;transition:all .25s cubic-bezier(.4,0,.2,1);
+}
+.nd:hover{
+  border-color:var(--border2);background:#fff;
+  transform:translateY(-2px) scale(1.02) !important;
+  box-shadow:0 8px 28px rgba(31,58,95,0.15);z-index:20;
+}
+.nd.active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-g),0 4px 20px rgba(31,58,95,0.15);animation:pulse 2s ease-in-out infinite}
+.nd.done{border-color:var(--green);box-shadow:0 0 0 2px rgba(22,163,74,0.15),0 2px 12px rgba(28,28,28,0.07)}
+.nd.err{border-color:var(--red);box-shadow:0 0 0 2px rgba(220,38,38,0.14),0 2px 12px rgba(28,28,28,0.07)}
+
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 0 3px var(--accent-g),0 4px 20px rgba(31,58,95,0.12)}
+  50%{box-shadow:0 0 0 5px rgba(31,58,95,0.10),0 6px 28px rgba(31,58,95,0.20);border-color:var(--accent2)}
+}
+
+.ni{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+}
+.ni.c-emerald{background:rgba(22,163,74,0.10);border:1px solid rgba(22,163,74,0.22)}
+.ni.c-blue{background:rgba(31,58,95,0.10);border:1px solid rgba(31,58,95,0.22)}
+.ni.c-amber{background:rgba(217,119,6,0.10);border:1px solid rgba(217,119,6,0.22)}
+.ni.c-slate{background:rgba(100,116,139,0.10);border:1px solid rgba(100,116,139,0.22)}
+.ni.c-violet{background:rgba(59,95,160,0.10);border:1px solid rgba(59,95,160,0.22)}
+.ni.c-rose{background:rgba(192,57,43,0.10);border:1px solid rgba(192,57,43,0.22)}
+.ni.c-orange{background:rgba(192,86,33,0.10);border:1px solid rgba(192,86,33,0.22)}
+.ni.c-cyan{background:rgba(14,116,144,0.10);border:1px solid rgba(14,116,144,0.22)}
+
+
+.nw{display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1}
+.nd .lb{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nd .st{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px}
+.nd.done .st{color:var(--green);font-weight:600}
+.nd.err .st{color:var(--red);font-weight:600}
+.nd.active .st{color:var(--accent2)}
+
+/* Ports */
+.port{
+  position:absolute;width:8px;height:8px;
+  background:#fff;border:1.5px solid var(--text3);
+  border-radius:50%;z-index:5;transition:all .2s;
+}
+.nd:hover .port{border-color:var(--accent);background:var(--surface2)}
+.port-in{left:-5px;top:50%;transform:translateY(-50%)}
+.port-out{right:-5px;top:50%;transform:translateY(-50%)}
+
+/* Status Badge */
+.badge{
+  position:absolute;bottom:-5px;right:-5px;
+  width:16px;height:16px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;color:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:15;border:1.5px solid #fff;
+}
+.nd.done .badge{display:flex;background:var(--green)}.nd.done .badge::after{content:'\2713'}
+.nd.err .badge{display:flex;background:var(--red)}.nd.err .badge::after{content:'\2717'}
+.nd.active .badge{display:flex;background:var(--accent);animation:badgePulse 1s infinite alternate}
+.nd.active .badge::after{content:'\2026'}
+@keyframes badgePulse{from{transform:scale(.85)}to{transform:scale(1.1)}}
+
+/* ── Side Panel ── */
+.panel{
+  position:fixed;right:0;top:0;width:540px;max-width:100vw;
+  height:100vh;height:100dvh;
+  background:rgba(255,255,255,0.97);backdrop-filter:blur(24px);
+  border-left:1px solid var(--border);
+  transform:translateX(100%);
+  transition:transform .35s cubic-bezier(.16,1,.3,1);
+  z-index:150;display:flex;flex-direction:column;
+  box-shadow:-8px 0 40px rgba(31,58,95,0.12);
+}
+.panel.open{transform:translateX(0)}
+.panel .ph{
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  background:rgba(31,58,95,0.03);
+}
+.panel .ph h3{font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.panel .pc{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px 8px;transition:color .2s;border-radius:6px}
+.panel .pc:hover{color:var(--text);background:var(--surface2)}
+.panel .pb{flex:1;overflow-y:auto;padding:20px;font-size:13.5px;line-height:1.7;color:var(--text2);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+
+/* Markdown */
+.markdown-body{font-family:'Inter',sans-serif;color:var(--text2)}
+.markdown-body h1{font-size:1.5rem;margin:1.5rem 0 .8rem;color:var(--text);border-bottom:1px solid var(--border);padding-bottom:6px}
+.markdown-body h2{font-size:1.2rem;margin:1.2rem 0 .5rem;color:var(--text)}
+.markdown-body h3{font-size:1.05rem;margin:1rem 0 .4rem;color:var(--text)}
+.markdown-body p{margin-bottom:.8rem}
+.markdown-body ul,.markdown-body ol{margin-bottom:.8rem;padding-left:20px}
+.markdown-body li{margin-bottom:.3rem}
+.markdown-body table{width:100%;border-collapse:collapse;margin-bottom:1rem;font-size:12px}
+.markdown-body th,.markdown-body td{padding:8px 12px;border:1px solid var(--border);text-align:left}
+.markdown-body th{background:var(--surface2);font-weight:600;color:var(--text)}
+.markdown-body pre{background:var(--surface);padding:12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;overflow-x:auto;margin-bottom:1rem;white-space:pre-wrap;border:1px solid var(--border)}
+.markdown-body hr{border:none;border-top:1px solid var(--border);margin:1.2rem 0}
+.markdown-body strong{font-weight:600;color:var(--text)}
+.markdown-body a{color:var(--accent);text-decoration:none}
+.markdown-body a:hover{text-decoration:underline}
+
+/* Aggregator */
+.agg-ui{display:flex;flex-direction:column;gap:12px;height:100%}
+.agg-ta{
+  width:100%;flex:1;min-height:300px;
+  border:1px solid var(--border);border-radius:8px;
+  padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;
+  resize:none;outline:none;background:#fff;color:var(--text2);
+  transition:border-color .2s;scrollbar-width:thin;
+}
+.agg-ta:focus{border-color:var(--accent)}
+
+
+/* ── Status Bar ── */
+#sbar{
+  padding:7px 28px;
+  background:rgba(31,58,95,0.04);
+  border-top:1px solid var(--border);
+  font-size:11px;color:var(--text3);
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:'JetBrains Mono',monospace;z-index:100;
+  cursor:pointer;
+}
+#sbar span{display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.g{background:var(--green);box-shadow:0 0 8px rgba(22,163,74,0.5)}
+.dot.y{background:var(--amber);box-shadow:0 0 8px rgba(217,119,6,0.5)}
+.dot.r{background:var(--red);box-shadow:0 0 8px rgba(220,38,38,0.5)}
+
+/* ── Log Console ── */
+#log{
+  position:fixed;bottom:38px;left:16px;
+  width:400px;max-width:calc(100vw - 32px);max-height:220px;
+  overflow-y:auto;
+  background:rgba(28,28,28,0.95);border:1px solid rgba(255,255,255,0.08);
+  border-radius:var(--r);padding:10px 14px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:#94a3b8;z-index:200;display:none;
+  box-shadow:0 10px 40px rgba(0,0,0,0.3);
+  scrollbar-width:thin;
+}
+#log.v{display:block}
+.ll{margin:3px 0;padding-bottom:3px;border-bottom:1px solid rgba(255,255,255,0.05);line-height:1.4}
+.ll.e{color:#f87171}.ll.o{color:#4ade80}.ll.i{color:#94a3b8}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:52px;left:50%;transform:translateX(-50%);
+  padding:10px 24px;border-radius:20px;font-size:13px;font-weight:500;
+  z-index:250;max-width:90vw;text-align:center;
+  animation:toastIn .4s cubic-bezier(.175,.885,.32,1.275);
+  box-shadow:0 8px 32px rgba(31,58,95,0.2);
+}
+.toast.ok{background:rgba(31,58,95,0.08);border:1px solid rgba(31,58,95,0.3);color:var(--accent)}
+.toast.er{background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.3);color:var(--red)}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  header{padding:10px 14px;flex-direction:column;align-items:stretch;gap:8px}
+  .header-brand{justify-content:center}
+  .header-logo{height:36px}
+  header h1{font-size:15px;justify-content:center}
+  .controls{width:100%;justify-content:center;gap:6px}
+  input[type=text]{max-width:100%;min-width:0;flex:1 1 100%;font-size:13px;padding:9px 12px}
+  .btn{padding:9px 14px;font-size:12px}
+  #board{overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+  #boardInner{position:relative;width:100%!important;height:auto!important;transform:none!important;padding:8px 0 20px}
+  .nd{position:relative!important;left:0!important;top:0!important;margin:5px 14px!important;width:calc(100% - 28px)!important;min-width:unset!important;height:auto!important;min-height:52px}
+  .nd:hover{transform:none!important}
+  canvas{display:none}
+  .panel{width:100vw;border-left:none;border-top:1px solid var(--border)}
+  #sbar{padding:5px 14px;font-size:9px}
+  #log{width:calc(100vw - 24px);left:12px;bottom:34px;max-height:160px;font-size:9px}
+
+}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="header-brand">
+    <img src="logo.png" alt="HD Logo" class="header-logo">
+    <h1>AI Content Pipeline</h1>
+  </div>
+  <div class="controls">
+    <input type="text" id="topicInput" placeholder="Enter a topic to research and generate content...">
+    <button class="btn btn-p" id="startBtn" onclick="startPipeline()">&#9654; Execute</button>
+    <button class="btn btn-s" onclick="resetPipeline()">&#8635;</button>
+  </div>
+</header>
+
+<div id="board">
+  <div id="boardInner">
+    <div class="grid-bg"></div>
+    <canvas id="cv"></canvas>
+    <div id="nodes"></div>
+  </div>
+</div>
+
+<div id="sbar" onclick="toggleLog()">
+  <span><span class="dot g" id="sDot"></span> <span id="sTxt">Ready</span></span>
+  <span>Nodes: <span id="aC">0</span>/9</span>
+  <span id="apiS">AI: Idle</span>
+</div>
+</div>
+
+<!-- Side Panel -->
+<div class="panel" id="panel">
+  <div class="ph">
+    <h3 id="pT"></h3>
+    <div>
+      <button id="pCopy" class="btn btn-s" style="padding:4px 10px;font-size:11px;margin-right:6px;display:none" onclick="copyP()">Copy</button>
+      <button class="pc" onclick="closeP()">&#10005;</button>
+    </div>
+  </div>
+  <div class="pb" id="pB"></div>
+</div>
+
+<div id="log"></div>
+
+<script>
+// ═══════════════════════════════════════
+// State
+// ═══════════════════════════════════════
+let R = {};
+let running = false;
+let conns = [];
+let animOffset = 0;
+let animFrameId = null;
+let VIRT_W = 1400, VIRT_H = 850;
+let panX = 0, panY = 0, zoom = 1;
+
+// ═══════════════════════════════════════
+// Node Definitions (9 nodes)
+// ═══════════════════════════════════════
+const T = {
+  start:            { id:'start',            label:'Start Trigger',     icon:'\u26A1', c:'c-emerald', x:.06, y:.50, ch:['searchGoogle'],   d:'Triggers the pipeline with your topic.' },
+  searchGoogle:     { id:'searchGoogle',     label:'Search Google',     icon:'\uD83D\uDD0D', c:'c-blue',    x:.24, y:.50, ch:['extractContent'], d:'Searches Google via Serper API (page 1 & 2).' },
+  extractContent:   { id:'extractContent',   label:'Extract Content',   icon:'\uD83D\uDCC4', c:'c-amber',   x:.44, y:.50, ch:['generateBlog'], d:'Fetches URLs and feeds content to SEO Blog.' },
+  generateBlog:     { id:'generateBlog',     label:'Generate Blog',     icon:'\u270D\uFE0F',  c:'c-slate',   x:.68, y:.18, ch:['blogImagePrompts','socialCopy'], d:'Generates primary 1200+ word SEO blog post.' },
+  socialCopy:       { id:'socialCopy',       label:'Social Media',      icon:'\uD83D\uDCF1', c:'c-violet',  x:.68, y:.50, ch:['socialImagePrompts','emailNewsletter'], d:'Creates LinkedIn post from approved blog.' },
+  emailNewsletter:  { id:'emailNewsletter',  label:'Email Newsletter',  icon:'\uD83D\uDCE7', c:'c-rose',    x:.68, y:.82, ch:['emailImagePrompts'], d:'Generates weekly newsletter from approved blog.' },
+  blogImagePrompts:   { id:'blogImagePrompts',   label:'Blog Img Prompts',   icon:'\uD83D\uDDBC\uFE0F', c:'c-orange', x:.92, y:.18, ch:[], d:'Writes 3 structured JSON image prompts tailored to the blog content.' },
+  socialImagePrompts: { id:'socialImagePrompts', label:'Social Img Prompts', icon:'\uD83C\uDFA8', c:'c-cyan',   x:.92, y:.50, ch:[], d:'Writes 2 structured JSON image prompts tailored to the social post.' },
+  emailImagePrompts:  { id:'emailImagePrompts',  label:'Email Img Prompts',  icon:'\uD83D\uDCF8', c:'c-rose',   x:.92, y:.82, ch:[], d:'Writes 2 structured JSON image prompts tailored to the newsletter.' }
+};
+
+const MOB_POS = {
+  start:{x:.5,y:.04}, searchGoogle:{x:.5,y:.13}, extractContent:{x:.5,y:.22},
+  generateBlog:{x:.5,y:.31}, blogImagePrompts:{x:.5,y:.40},
+  socialCopy:{x:.5,y:.51}, socialImagePrompts:{x:.5,y:.60},
+  emailNewsletter:{x:.5,y:.71}, emailImagePrompts:{x:.5,y:.80}
+};
+
+// ═══════════════════════════════════════
+// Utilities
+// ═══════════════════════════════════════
+const isMobile = () => window.innerWidth <= 768;
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+function lg(m, t='i') {
+  const l = document.getElementById('log');
+  l.classList.add('v');
+  const d = document.createElement('div');
+  d.className = `ll ${t}`;
+  d.textContent = `[${new Date().toLocaleTimeString()}] ${m}`;
+  l.appendChild(d);
+  l.scrollTop = l.scrollHeight;
+}
+
+function toggleLog() { document.getElementById('log').classList.toggle('v'); }
+
+function setS(id, s, cls) {
+  const e = document.getElementById(`n-${id}`);
+  const st = document.getElementById(`s-${id}`);
+  if (!e) return;
+  e.classList.remove('active','done','err');
+  if (cls) e.classList.add(cls);
+  if (st) st.textContent = s;
+}
+
+function uS(t, c) {
+  document.getElementById('sTxt').textContent = t;
+  document.getElementById('sDot').className = `dot ${c}`;
+}
+
+function toast(m, ok=true) {
+  const t = document.createElement('div');
+  t.className = `toast ${ok ? 'ok' : 'er'}`;
+  t.textContent = m;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function esc(s) {
+  return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════
+// Rendering
+// ═══════════════════════════════════════
+function buildConnections() {
+  conns = [];
+  Object.values(T).forEach(n => n.ch.forEach(c => conns.push([n.id, c])));
+}
+
+function getBoardSize() {
+  const b = document.getElementById('board');
+  const bw = b.clientWidth, bh = b.clientHeight;
+  if (isMobile()) { VIRT_W = 400; VIRT_H = Math.max(1200, bh); }
+  else { VIRT_W = 1400; VIRT_H = 850; }
+  return { W: Math.max(VIRT_W, bw), H: Math.max(VIRT_H, bh), bw, bh };
+}
+
+function autoFit() {
+  const b = document.getElementById('board');
+  const bw = b.clientWidth, bh = b.clientHeight;
+  if (isMobile()) { zoom=1; panX=0; panY=0; }
+  else {
+    zoom = Math.min(bw/VIRT_W, bh/VIRT_H, 0.95);
+    panX = (bw - VIRT_W*zoom)/2;
+    panY = (bh - VIRT_H*zoom)/2;
+  }
+  applyTransform();
+}
+
+function applyTransform() {
+  const inner = document.getElementById('boardInner');
+  if (inner) inner.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+}
+
+function renderNodes() {
+  const box = document.getElementById('nodes');
+  const inner = document.getElementById('boardInner');
+  const { W, H } = getBoardSize();
+  if (inner) { inner.style.width = W+'px'; inner.style.height = H+'px'; }
+  const mob = isMobile();
+  box.innerHTML = '';
+
+  Object.values(T).forEach(n => {
+    const pos = mob && MOB_POS[n.id] ? MOB_POS[n.id] : n;
+    const e = document.createElement('div');
+    e.className = 'nd';
+    e.id = `n-${n.id}`;
+    const w = 174, h = 58;
+    e.style.left = `${pos.x * W - w/2}px`;
+    e.style.top = `${pos.y * H - h/2}px`;
+    e.innerHTML = `
+      <div class="ni ${n.c}"><span>${n.icon}</span></div>
+      <div class="nw">
+        <div class="lb">${n.label}</div>
+        <div class="st" id="s-${n.id}">idle</div>
+      </div>
+      <div class="badge"></div>
+      <div class="port port-in"></div>
+      <div class="port port-out"></div>
+    `;
+    e.onclick = () => showOut(n.id);
+    box.appendChild(e);
+  });
+  autoFit();
+}
+
+// ═══════════════════════════════════════
+// Connection Drawing
+// ═══════════════════════════════════════
+function getPortCoords(fe, te) {
+  const x1c = fe.offsetLeft+fe.offsetWidth/2, y1c = fe.offsetTop+fe.offsetHeight/2;
+  const x2c = te.offsetLeft+te.offsetWidth/2, y2c = te.offsetTop+te.offsetHeight/2;
+  let x1=x1c,y1=y1c,x2=x2c,y2=y2c;
+  if (Math.abs(x1c-x2c) > Math.abs(y1c-y2c)) {
+    if (x1c<x2c) { x1=fe.offsetLeft+fe.offsetWidth; x2=te.offsetLeft; }
+    else { x1=fe.offsetLeft; x2=te.offsetLeft+te.offsetWidth; }
+  } else {
+    if (y1c<y2c) { y1=fe.offsetTop+fe.offsetHeight; y2=te.offsetTop; }
+    else { y1=fe.offsetTop; y2=te.offsetTop+te.offsetHeight; }
+  }
+  return {x1,y1,x2,y2};
+}
+
+function drawLines(offset=0) {
+  const cv = document.getElementById('cv');
+  if (!cv) return;
+  const {W,H} = getBoardSize();
+  cv.width=W; cv.height=H;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  conns.forEach(([f,t]) => {
+    const fe=document.getElementById(`n-${f}`), te=document.getElementById(`n-${t}`);
+    if (!fe||!te) return;
+    const {x1,y1,x2,y2} = getPortCoords(fe,te);
+    const dn=fe.classList.contains('done'), ac=fe.classList.contains('active'), er=fe.classList.contains('err');
+
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.bezierCurveTo(x1+(x2-x1)*.4, y1, x1+(x2-x1)*.6, y2, x2, y2);
+    ctx.strokeStyle = er ? 'rgba(239,68,68,0.3)' : dn ? 'rgba(34,197,94,0.3)' : ac ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = dn ? 2 : 1.5;
+    ctx.stroke();
+
+    if ((dn||ac) && !er) {
+      ctx.beginPath();
+      ctx.moveTo(x1,y1);
+      ctx.bezierCurveTo(x1+(x2-x1)*.4, y1, x1+(x2-x1)*.6, y2, x2, y2);
+      ctx.setLineDash([5,10]);
+      ctx.lineDashOffset = -offset * (ac ? 1.6 : 0.7);
+      ctx.strokeStyle = dn ? 'rgba(34,197,94,0.5)' : 'rgba(16,185,129,0.5)';
+      ctx.lineWidth = dn ? 1.5 : 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  });
+}
+
+function startLineAnimation() {
+  (function tick() {
+    animOffset += 0.35;
+    drawLines(animOffset);
+    animFrameId = requestAnimationFrame(tick);
+  })();
+}
+
+// ═══════════════════════════════════════
+// API Clients — Puter.js primary, Pollinations fallback
+// ═══════════════════════════════════════
+let puterAvailable = false; // set to true after successful auth
+
+async function callPuterLLM(prompt, systemPrompt, model = 'claude-sonnet-5') {
+  document.getElementById('apiS').textContent = `AI: Puter (${model})...`;
+  try {
+    // Correct Puter.js format: string prompt as first arg, system inside options
+    const response = await Promise.race([
+      puter.ai.chat(prompt, { model, system: systemPrompt }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Puter timeout (90s)')), 90000))
+    ]);
+    document.getElementById('apiS').textContent = 'AI: Ready';
+
+    // Extract text — Puter/Claude returns content as array, OpenAI as string
+    let text = '';
+    const msg = response?.message;
+    if (msg) {
+      if (Array.isArray(msg.content)) {
+        text = msg.content.map(c => c.text || c.content || '').join('');
+      } else if (typeof msg.content === 'string') {
+        text = msg.content;
+      }
+    } else if (typeof response === 'string') {
+      text = response;
+    } else if (response?.text) {
+      text = response.text;
+    }
+
+    lg(`Puter response: ${text.length} chars`, 'o');
+    if (text && text.length > 30) return { err: false, text };
+    return { err: true, text: `Empty Puter response (raw keys: ${Object.keys(response || {}).join(',')})` };
+  } catch (e) {
+    return { err: true, text: e.message || String(e) };
+  }
+}
+
+const POLL_MODELS = ['openai', 'mistral', 'llama'];
+
+async function callPollinationsLLM(prompt, systemPrompt) {
+  for (const model of POLL_MODELS) {
+    document.getElementById('apiS').textContent = `AI: Pollinations (${model})...`;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90000);
+      const r = await fetch('https://text.pollinations.ai/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt }
+          ]
+        })
+      });
+      clearTimeout(timeout);
+      if (!r.ok) { lg(`Pollinations model "${model}" failed: ${r.status}`, 'e'); continue; }
+      const raw = await r.text();
+      // Pollinations returns plain text or JSON
+      let text = raw;
+      if (raw && raw.trimStart().startsWith('{')) {
+        try {
+          const p = JSON.parse(raw);
+          if (p.choices?.[0]) text = p.choices[0].message?.content || p.choices[0].text || '';
+          else if (p.content) text = p.content;
+        } catch (_) {}
+      }
+      if (text && text.length > 30) {
+        document.getElementById('apiS').textContent = 'AI: Ready';
+        lg(`Pollinations (${model}) responded: ${text.length} chars`, 'o');
+        return { err: false, text };
+      }
+      lg(`Pollinations model "${model}" returned empty. Trying next...`, 'e');
+    } catch (e) {
+      lg(`Pollinations model "${model}" error: ${e.message}`, 'e');
+    }
+  }
+  document.getElementById('apiS').textContent = 'AI: Failed';
+  return { err: true, text: 'All Pollinations models failed.' };
+}
+
+async function callLLMWithRetry(prompt, systemPrompt, retries = 2, model = 'claude-sonnet-5') {
+  // Primary: Puter.js (when authenticated)
+  if (puterAvailable) {
+    const res = await callPuterLLM(prompt, systemPrompt, model);
+    if (!res.err) return res;
+    lg(`Puter failed (${res.text}). Falling back to Pollinations...`, 'e');
+    puterAvailable = false; // disable puter for rest of pipeline if it keeps failing
+  }
+  // Fallback: Pollinations (tries openai → mistral → llama internally)
+  for (let i = 0; i <= retries; i++) {
+    const res = await callPollinationsLLM(prompt, systemPrompt);
+    if (!res.err) return res;
+    if (i < retries) {
+      const waitMs = 4000 + i * 3000;
+      lg(`All Pollinations models failed (attempt ${i+1}). Retrying in ${waitMs/1000}s...`, 'e');
+      await delay(waitMs);
+    }
+  }
+
+  return { err: true, text: 'All AI providers failed.' };
+}
+
+// ═══════════════════════════════════════
+// Google Search (Serper API)
+// ═══════════════════════════════════════
+const SERPER_KEY = 'cd4cc104ee9bd3caab424cccacb2ba88df0de483';
+
+async function searchGoogle(topic) {
+  document.getElementById('apiS').textContent = 'AI: Searching...';
+  lg('Searching Google via Serper API...', 'i');
+
+  const allUrls = [], allSnippets = [];
+  try {
+    // First: search tempsens.com specifically for brand context
+    const tsQuery = `site:tempsens.com ${topic}`;
+    try {
+      const tsr = await fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: tsQuery, num: 5 })
+      });
+      if (tsr.ok) {
+        const tsData = await tsr.json();
+        lg(`Tempsens.com: ${tsData.organic?.length || 0} results`, 'o');
+        if (tsData.organic) {
+          tsData.organic.forEach(item => {
+            if (item.link && !allUrls.includes(item.link)) {
+              allUrls.push(item.link);
+              allSnippets.push({ title: `[Tempsens] ${item.title}`, url: item.link, snippet: item.snippet || '' });
+            }
+          });
+        }
+      }
+    } catch (_) { lg('Tempsens.com search skipped.', 'i'); }
+    await delay(200);
+
+    // Then: general Google search for broader context
+    for (let page = 1; page <= 2; page++) {
+      const r = await fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: topic, page })
+      });
+      if (!r.ok) { lg(`Serper page ${page} error: ${r.status}`, 'e'); continue; }
+      const data = await r.json();
+      lg(`Page ${page}: ${data.organic?.length || 0} results`, 'o');
+
+      if (data.organic) {
+        data.organic.forEach(item => {
+          if (item.link && !allUrls.includes(item.link)) {
+            allUrls.push(item.link);
+            allSnippets.push({ title: item.title, url: item.link, snippet: item.snippet || '' });
+          }
+        });
+      }
+      if (page === 1 && data.knowledgeGraph?.description) {
+        allSnippets.unshift({ title: 'Knowledge Graph', url: '', snippet: data.knowledgeGraph.description });
+      }
+      if (page < 2) await delay(200);
+    }
+
+    document.getElementById('apiS').textContent = 'AI: Ready';
+    lg(`Found ${allUrls.length} unique URLs from Google (including Tempsens).`, 'o');
+    return { err: false, urls: allUrls, snippets: allSnippets, text: allSnippets.map(s => `[${s.title}](${s.url})\n${s.snippet}`).join('\n\n') };
+  } catch (e) {
+    lg(`Search error: ${e.message}`, 'e');
+    return { err: true, text: `Search failed: ${e.message}` };
+  }
+}
+
+// ═══════════════════════════════════════
+// Content Extraction
+// ═══════════════════════════════════════
+const PROXIES = [
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`
+];
+
+async function fetchPage(url) {
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 5000);
+      const r = await fetch(PROXIES[i](url), { signal: c.signal });
+      clearTimeout(t);
+      if (r.ok) {
+        const html = await r.text();
+        if (html.length > 200) { lg(`Fetched ${url.substring(0,50)}... (${(html.length/1024).toFixed(0)}KB)`, 'o'); return html; }
+      }
+    } catch (_) {}
+  }
+  return '';
+}
+
+function extractText(html, url) {
+  if (!html || html.length < 100) return '';
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,style,nav,footer,header,aside,iframe,noscript,svg,.sidebar,.nav,.footer,.header,.menu,.ad,.ads,.cookie,.popup,.modal,[role=navigation],[role=banner],[role=complementary]').forEach(el => el.remove());
+    const main = doc.querySelector('article,main,[role=main],.post-content,.entry-content,.article-body,.content-area,#content,.blog-content,.page-content');
+    let text = (main || doc.body)?.textContent || '';
+    text = text.replace(/[\t ]+/g,' ').replace(/\n\s*\n\s*\n/g,'\n\n').replace(/^\s+/gm,'').trim();
+    return text.length > 5000 ? text.substring(0,5000) + '\n[...truncated]' : text;
+  } catch (_) { return ''; }
+}
+
+async function extractAllContent(urls, snippets) {
+  const urlsToFetch = urls.slice(0, 5);
+  lg(`Extracting content from ${urlsToFetch.length} URLs in parallel...`, 'i');
+
+  // Fetch all URLs in parallel with an overall timeout
+  const fetchPromises = urlsToFetch.map(async (url, i) => {
+    const snippet = snippets.find(s => s.url === url);
+    const html = await fetchPage(url);
+    const text = extractText(html, url);
+
+    let content = `\n=== Source: ${snippet?.title || url} ===\nURL: ${url}\n`;
+    if (text && text.length > 50) {
+      content += text;
+    } else if (snippet?.snippet) {
+      content += `[Snippet] ${snippet.snippet}`;
+      lg(`Using snippet for ${url.substring(0,50)}...`, 'i');
+    } else {
+      content += '[Content unavailable]';
+    }
+    return content;
+  });
+
+  // Race all fetches against a 20s overall deadline — clear timer on early completion
+  let extractTimer;
+  const results = await Promise.race([
+    Promise.all(fetchPromises).then(r => { clearTimeout(extractTimer); return r; }),
+    new Promise(resolve => {
+      extractTimer = setTimeout(() => {
+        lg('Extraction timeout (20s). Using available snippets...', 'i');
+        resolve(null);
+      }, 20000);
+    })
+  ]);
+
+  // If timeout hit, gather whatever snippets we have
+  if (!results) {
+    return snippets.slice(0, 5).map(s =>
+      `\n=== Source: ${s.title} ===\nURL: ${s.url}\n[Snippet] ${s.snippet}`
+    ).join('\n\n---\n');
+  }
+
+  lg(`Extraction complete: ${results.length} sources processed.`, 'o');
+  return results.join('\n\n---\n');
+}
+
+
+
+// ═══════════════════════════════════════
+// Pipeline Execution
+// ═══════════════════════════════════════
+
+async function startPipeline() {
+  if (running) return;
+  running = true;
+  const topic = document.getElementById('topicInput').value.trim();
+  if (!topic) { toast('Please enter a topic.', false); running = false; return; }
+
+  document.getElementById('startBtn').disabled = true;
+  R = {};
+  document.getElementById('log').innerHTML = '';
+  uS('Executing...', 'y');
+  lg(`Pipeline started: ${topic}`, 'i');
+  toast('Pipeline launched!');
+
+  // ── Puter.js Auth Check ──
+  puterAvailable = false;
+  if (typeof puter !== 'undefined') {
+    try {
+      if (!puter.auth.isSignedIn()) {
+        lg('Puter.js: requesting sign-in (popup may appear)...', 'i');
+        uS('Sign in to Puter...', 'y');
+        await Promise.race([
+          puter.auth.signIn(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('auth timeout')), 30000))
+        ]);
+      }
+      puterAvailable = puter.auth.isSignedIn();
+      if (puterAvailable) lg('Puter.js authenticated — using Claude Sonnet 5.', 'o');
+    } catch (e) {
+      lg(`Puter sign-in skipped (${e.message}). Using Pollinations fallback.`, 'i');
+    }
+    if (!puterAvailable) lg('Puter unavailable. Using Pollinations (openai-large).', 'i');
+  } else {
+    lg('Puter.js not loaded. Using Pollinations fallback.', 'i');
+  }
+  uS('Executing...', 'y');
+
+  let pCount = 0;
+  const bump = () => { pCount++; document.getElementById('aC').textContent = String(pCount); };
+
+  // ── 1. Start ──
+  setS('start', 'running...', 'active');
+  await delay(400);
+  R.start = { err:false, text:`Topic: "${topic}"` };
+  setS('start', 'completed', 'done');
+  bump();
+
+  // ── 2. Search Google ──
+  setS('searchGoogle', 'searching...', 'active');
+  const searchRes = await searchGoogle(topic);
+  R.searchGoogle = searchRes;
+  if (searchRes.err) {
+    setS('searchGoogle', 'failed', 'err');
+    toast('Search failed!', false);
+    stopPipeline(); return;
+  }
+  setS('searchGoogle', `${searchRes.urls.length} results`, 'done');
+  bump();
+
+  // ── 3. Extract Content ──
+  setS('extractContent', 'extracting...', 'active');
+  const corpus = await extractAllContent(searchRes.urls, searchRes.snippets);
+  R.extractContent = { err:false, text: corpus };
+  setS('extractContent', 'completed', 'done');
+  bump();
+  lg(`Content extracted: ${(corpus.length/1024).toFixed(1)}KB`, 'o');
+
+  lg('Content extracted. Sending directly to AI generation agents...', 'o');
+  uS('Generating...', 'y');
+
+  // ── 4-9. Parallel Output Nodes ──
+  const ctx = corpus.substring(0, 6000);
+
+  const TEMPSENS_SYSTEM_PROMPT = `You are a B2B technical writer and strategist with 20+ years of experience who also understands sales and human psychology. You create brand authority for Tempsens (tempsens.com) through content. Write technically correct, professional content in a natural humanised conversational tone in grade 9 language which is easy to read and understand. Avoid using buzzwords to not sound like AI. Write like a knowledgeable engineer explaining things over coffee — not like a marketing team. Use short paragraphs, mix sentence lengths, use contractions naturally. Reference tempsens.com context where relevant but never be pushy or salesy. Prioritize practical value and actionable insights.`;
+
+  const IMAGE_PROMPT_SYSTEM = `You are an industrial photography director and visual content strategist specializing in manufacturing, engineering, and B2B industrial imagery. You write precise, structured image prompts as JSON. Each prompt you write must depict a COMPLETELY DIFFERENT visual concept. Never repeat subjects, angles, compositions, or settings across prompts. You understand factories, furnaces, sensors, control rooms, labs, and industrial environments intimately. Output ONLY valid JSON. No markdown, no explanation, no extra text.`;
+
+  const VISUAL_CATEGORIES = {
+    blog: [
+      { cat: 'Hero - Wide Environment', guide: 'Wide-angle establishing shot of the industrial environment where the topic is used. Show the full scale: factory floor, furnace line, plant exterior, or production hall. Include workers or operators for scale. Dramatic perspective, depth, atmospheric lighting.' },
+      { cat: 'Technical Close-up', guide: 'Extreme close-up or macro shot of the specific product, sensor, component, or material discussed. Show textures, materials, construction details, mounting points, or connections. Shallow depth of field, studio-quality detail lighting.' },
+      { cat: 'Process in Action', guide: 'Mid-shot capturing the topic being actively used in a real process. Show molten metal pouring, furnace operation, measurement being taken, installation in progress, or calibration happening. Motion, heat haze, sparks, or glowing elements where relevant. Dynamic action moment.' }
+    ],
+    social: [
+      { cat: 'Bold Statement Visual', guide: 'Clean, bold, attention-grabbing composition. Single strong subject centered or rule-of-thirds. High contrast. Vibrant but professional colors. The kind of image that stops scrolling on LinkedIn. Minimal background clutter.' },
+      { cat: 'Behind-the-Scenes Reality', guide: 'Authentic candid moment from the shop floor or engineering lab. An engineer inspecting equipment, a technician at a control panel, a quality check in progress. Real, unposed, documentary style. Warm, natural lighting.' }
+    ],
+    email: [
+      { cat: 'Panoramic Banner', guide: 'Ultra-wide cinematic banner composition. Sweeping view of industrial landscape, production line, or technology in context. Clean horizontal lines suitable for email header. Professional color grading, atmospheric depth.' },
+      { cat: 'Detail Spotlight', guide: 'Focused product or concept detail shot suitable for inline email visual. Clean background, professional product photography feel. Warm professional tones, clear subject isolation, inviting and approachable.' }
+    ]
+  };
+
+  async function writeImagePrompts(nodeId, contentType, sourceText, count, format, dimensions) {
+    setS(nodeId, 'writing prompts...', 'active');
+    lg(`Writing ${count} diverse image prompts for ${contentType}...`, 'i');
+
+    const categories = VISUAL_CATEGORIES[contentType] || VISUAL_CATEGORIES.blog.slice(0, count);
+    const catInstructions = categories.map((c, i) => `
+Prompt ${i+1} - CATEGORY: "${c.cat}"
+Direction: ${c.guide}`).join('\n');
+
+    const prompt = `OUTPUT FORMAT: Respond with ONLY a valid JSON array. No markdown fences. No explanation. No prose. Start your response with [ and end with ].
+
+Topic: "${topic}"
+Content type: ${contentType}
+Format: ${format} (${dimensions.width}x${dimensions.height})
+
+Source content (extract specific details to make prompts unique and relevant):
+${(sourceText || ctx).substring(0, 2000)}
+
+Write exactly ${count} image generation prompts as a JSON array. Each prompt MUST follow its assigned visual category. Each prompt MUST be visually DISTINCT — different subject, different angle, different composition, different setting.
+
+${catInstructions}
+
+For EACH prompt object:
+- "id": "${contentType}_image_N" (N starts at 1)
+- "category": the assigned category name
+- "purpose": a short label for the image role
+- "prompt": richly detailed, SPECIFIC to "${topic}", follows the category direction, references actual equipment/materials/processes from source content, includes exact subject + specific environment + camera angle + lens type + lighting + color palette + mood. End with "16K UHD, photorealistic, ultra detailed, no text, no watermark, no logos"
+- "dimensions": {"width":${dimensions.width},"height":${dimensions.height},"aspect_ratio":"${dimensions.width === dimensions.height ? '1:1' : '16:9'}"}
+- "format": "${format}"
+- "style": a short style descriptor UNIQUE to this prompt (not reused across prompts)
+
+CRITICAL: Output ONLY the raw JSON array. First character must be [. Last character must be ]. Nothing else.`;
+
+    const res = await callLLMWithRetry(prompt, IMAGE_PROMPT_SYSTEM, 3, 'claude-haiku-4-5');
+    if (res.err) {
+      setS(nodeId, 'failed', 'err');
+      lg(`Image prompt writing failed for ${contentType}: ${res.text}`, 'e');
+      return null;
+    }
+
+    // Parse JSON from response — handle potential markdown fences and prose wrapping
+    let parsed;
+    try {
+      let raw = res.text.trim();
+      // Strip markdown code fences
+      const fence = '`'.repeat(3);
+      if (raw.startsWith(fence)) raw = raw.replace(new RegExp('^' + fence + '(?:json)?\\n?'), '').replace(new RegExp('\\n?' + fence + '$'), '');
+      // Try direct parse
+      if (!parsed) {
+        try { parsed = JSON.parse(raw); } catch (_) {}
+      }
+      // Fallback: extract first JSON array from the text (handles prose wrapping)
+      if (!parsed) {
+        const arrMatch = raw.match(/(\[\s*\{[\s\S]*?\}\s*\])/m);
+        if (arrMatch) { try { parsed = JSON.parse(arrMatch[1]); } catch (_) {} }
+      }
+      // Fallback: extract first JSON object and wrap in array
+      if (!parsed) {
+        const objMatch = raw.match(/(\{[\s\S]*?\})/m);
+        if (objMatch) { try { parsed = [JSON.parse(objMatch[1])]; } catch (_) {} }
+      }
+      if (parsed && !Array.isArray(parsed)) parsed = [parsed];
+    } catch (e) {}
+
+    // Last resort: build unique fallback prompts per category
+    if (!parsed || parsed.length === 0) {
+      lg(`JSON parse failed for ${contentType}. Building category-based fallbacks...`, 'e');
+      parsed = categories.map((c, i) => ({
+        id: `${contentType}_image_${i+1}`,
+        category: c.cat,
+        purpose: c.cat,
+        prompt: `${topic} — ${c.guide.split('.')[0].toLowerCase()}, industrial professional photograph, cinematic lighting, 16K UHD, photorealistic, ultra detailed, no text, no watermark`,
+        dimensions,
+        format,
+        style: c.cat.toLowerCase().replace(/\s+/g, '_')
+      }));
+    }
+
+    const imagePrompts = parsed.slice(0, count);
+    R[nodeId] = { err: false, text: JSON.stringify(imagePrompts, null, 2), imagePrompts };
+    setS(nodeId, `${imagePrompts.length} prompts`, 'done');
+    bump();
+    lg(`${contentType} image prompts written: ${imagePrompts.length}`, 'o');
+    return imagePrompts;
+  }
+
+
+
+  async function taskBlog() {
+    setS('generateBlog', 'writing...', 'active');
+    lg('Generating Tempsens blog (Target: 1000-1200 words)...', 'i');
+    
+    const blogSystemPrompt = `You are a senior industrial engineer, technical educator, B2B sales consultant, and manufacturing storyteller with over 30 years of experience in temperature measurement. You have spent decades helping steel plants, aerospace manufacturers, automotive companies, power plants, pharmaceuticals, glass manufacturers, semiconductor fabs, and process industries solve critical temperature measurement problems.
+
+You are also the voice behind Tempsens' content. Engineers trust you because you simplify complex concepts without oversimplifying them. Plant heads respect you because you understand business impact. Procurement teams appreciate you because you explain lifecycle value instead of selling products.
+
+Your writing style is conversational, technically accurate, and highly engaging. It feels like an experienced engineer is sitting across the table sharing knowledge, not a company trying to sell something.
+
+CRITICAL: You MUST write COMPLETE articles. Never stop mid-sentence or mid-section. Always finish every section including FAQs.`;
+    
+    const prompt = `Write a 1000-1200 word blog for the Tempsens website about "${topic}".
+
+RESEARCH DATA (use tempsens.com sources as primary reference, supplement with other sources):
+${ctx}
+
+GOAL: Educate first and naturally build trust in Tempsens as a technology leader. Increase average reading time, encourage scrolling, improve SEO naturally, and leave readers feeling they learned something genuinely valuable. Write so well that even competitors would find it worth reading.
+
+WRITING STYLE:
+- Write like a human. Not like AI. Not like a marketing copywriter. Not like a textbook.
+- Avoid unnecessary adjectives. Avoid corporate jargon.
+- Vary sentence lengths. Mix short observations with longer explanations.
+- Use contractions where appropriate.
+- Do not use em dashes.
+- Do not overuse bullet points.
+- Keep paragraphs between 2-5 lines.
+- Use descriptive subheadings (H2 and H3).
+- Maintain a calm, confident tone throughout.
+- Each section should naturally lead into the next.
+
+ABSOLUTELY NEVER USE THESE PHRASES:
+Imagine, Picture this, Let's dive in, In today's fast-paced world, Nowadays, Needless to say, Game changer, Revolutionary, Cutting-edge, Unlock, Leverage, Harness, Seamless, In conclusion, At the end of the day, One-stop solution
+
+AVOID:
+- Generic storytelling templates and fake scenarios
+- Forced emotional hooks
+- Repeating the same sentence structure
+- Rhetorical questions every few paragraphs
+- Overusing "because"
+- Definitions or statistics as opening
+- Beginning with why the topic is important
+
+OPENING STYLE:
+Begin with something readers likely don't know. A hidden engineering principle, a shop floor reality, the physics behind a phenomenon, a common misconception, or why something behaves the way it does. The first paragraph should make experienced engineers think: "I've worked around this for years but never thought about it this way."
+
+CONTENT STRUCTURE:
+Do NOT follow a rigid template. Analyze the research data and study what competitors are writing about this topic. Then choose the structure, headings, and flow that best suits "${topic}". The article should feel like it was specifically crafted for this subject, not poured into a generic mold.
+
+Guidelines for structuring:
+- Study the research data to understand what angles competitors cover, then go deeper or find a gap they missed.
+- Choose H2 headings that are specific to the topic. Generic section titles like "Benefits", "Applications", or "How It Works" are lazy. Be specific.
+- The structure should follow a logical narrative: start with something surprising, build understanding through the middle sections, and end with actionable insight.
+- Naturally introduce how Tempsens addresses these challenges through engineering expertise, product design, calibration capabilities, customization, reliability, or industry experience. Never turn this into a sales pitch. Mention Tempsens only where it genuinely adds value.
+- End with practical takeaways readers can apply immediately.
+
+DEPTH:
+- Always explain WHY before WHAT
+- Explain mechanisms, cause and effect, trade-offs, engineering decisions
+- Whenever mentioning a product, first explain the problem it solves
+- Don't assume readers already know technical concepts
+- Explain difficult ideas using relatable industrial examples, not consumer analogies
+
+TONE: Professional, curious, experienced, helpful, confident. Respect the intelligence of engineers. Never oversimplify. Never sound academic. Never sound promotional.
+
+TEMPSENS BRANDING (naturally reinforce as): Engineering-first, reliable, trusted worldwide, built for industrial environments, focused on accuracy, customization driven, calibration experts, long-term technology partner. Mention the brand only where it naturally fits. Do not repeatedly mention Tempsens.
+
+TITLES AND HEADINGS (Critical for SEO, GEO, AEO):
+- The H1 title MUST be simple, direct, and match what engineers actually type into Google. Use the exact target keyword near the beginning. No clever wordplay. No colons. No decorative language.
+- Good H1 examples: "Thermocouple Types and How to Choose the Right One", "Why Thermocouples Fail in Steel Plants", "RTD vs Thermocouple: Which One Should You Use"
+- Bad H1 examples: "Unlocking the Power of Temperature Sensing", "The Ultimate Guide to Thermocouples: Everything You Need to Know", "Temperature Measurement: A Deep Dive"
+- H2 subheadings must be short, descriptive, and contain secondary keywords naturally. Write them as clear topic labels, not sentences or questions.
+- Good H2 examples: "How Thermocouple Drift Happens", "Common Causes of Sensor Failure", "Choosing the Right Sheath Material"
+- Bad H2 examples: "Understanding the Nuances of Thermocouple Performance", "What You Need to Know About Drift", "The Importance of Material Selection"
+- H3 subheadings should break down H2 sections into scannable sub-topics. Keep them under 8 words.
+- Never use generic headings like "Introduction", "Overview", "Key Takeaways", or "Final Thoughts".
+- Every heading should make sense as a standalone search query that an engineer might type.
+- Structure headings so Google can extract featured snippets and AI engines can cite specific sections.
+
+SEO: Naturally include the target keyword in the H1, first paragraph, at least two H2s, and the conclusion. Use semantic and related keywords throughout. Do not keyword stuff. Write for humans first, search engines second.
+
+ENDING: End with insight rather than promotion. Leave readers with a stronger understanding of the engineering principle. Include a subtle mention that solving temperature measurement challenges begins with understanding the process, and that Tempsens works with industries to build reliable measurement solutions tailored to those realities. No hard selling.
+
+FAQs (MUST be included at the end):
+### Frequently Asked Questions
+
+Add 3-5 FAQs. Each answer must be under 30 words. Keep answers practical and concise. Focus on real questions engineers, plant managers, and buyers actually ask.
+
+Format:
+**Q: [Specific question about ${topic}]?**
+[Practical answer under 30 words]
+
+FINAL QUALITY CHECK before finishing:
+- Sounds like an experienced engineer wrote it
+- Every technical claim is explained clearly
+- No AI cliches remain
+- No repetitive sentence patterns
+- Tempsens branding feels earned, not inserted
+- Teaches something readers are unlikely to find in most blogs
+- Content is memorable enough that readers would want to share it with colleagues
+
+REMINDER: Write the ENTIRE article from start to finish including ALL sections and FAQs. Target 1000-1200 words. Do NOT stop until FAQs are complete.`;
+
+    let res = await callLLMWithRetry(prompt, blogSystemPrompt);
+    
+    // Validate word count — if too short, request continuations
+    if (res && !res.err) {
+      let wc = res.text.split(/\s+/).filter(w => w.length > 0).length;
+      lg(`Blog draft: ${wc} words`, 'i');
+      
+      let continuationAttempts = 0;
+      const maxContinuations = 2;
+      
+      while (continuationAttempts < maxContinuations) {
+        // Re-check completeness after every merge
+        const hasFAQs = /\bFAQ|Frequently Asked/i.test(res.text);
+        const endsCleanly = res.text.trim().endsWith('.') || res.text.trim().endsWith('?') || res.text.trim().endsWith('!');
+        
+        // Blog is complete if word count is met AND has FAQs AND ends cleanly
+        if (wc >= 900 && hasFAQs && endsCleanly) break;
+        
+        continuationAttempts++;
+        lg(`Blog incomplete (${wc} words, FAQs: ${hasFAQs ? 'yes' : 'no'}). Continuation attempt ${continuationAttempts}/${maxContinuations}...`, 'e');
+        
+        const lastPortion = res.text.slice(-3000);
+        const missingParts = [];
+        if (wc < 900) missingParts.push(`needs ${1000 - wc} more words of content with additional sections`);
+        if (!hasFAQs) missingParts.push('MUST end with ### Frequently Asked Questions section containing 3-5 FAQs');
+        
+        const contPrompt = `Continue and COMPLETE this blog post about "${topic}" for Tempsens (tempsens.com).
+
+Current status: ${wc} words written. ${missingParts.join('. ')}.
+
+Pick up EXACTLY where the text below ends. Do NOT repeat any content. Do NOT add a new title. Just continue writing.
+${hasFAQs ? '\nThe article ALREADY contains FAQs. Do NOT add another FAQ section. Just finish the article cleanly.' : '\nYou MUST include a complete FAQ section at the end:\n### Frequently Asked Questions\n\n**Q: [question]?**\n[answer under 30 words]\n(Include 3-5 FAQs)'}
+
+Maintain the same natural conversational tone. Same style, same quality.
+
+LAST PORTION OF CURRENT BLOG (continue from here):
+${lastPortion}`;
+        
+        const cont = await callLLMWithRetry(contPrompt, blogSystemPrompt);
+        if (!cont.err && cont.text.length > 100) {
+          res = { err: false, text: res.text + '\n\n' + cont.text };
+          wc = res.text.split(/\s+/).filter(w => w.length > 0).length;
+          lg(`Merged blog: ${wc} words (attempt ${continuationAttempts})`, 'o');
+        } else {
+          lg(`Continuation attempt ${continuationAttempts} failed. Using current content.`, 'e');
+          break;
+        }
+      }
+    }
+    
+    R.generateBlog = res;
+    if (res.err) { setS('generateBlog', 'failed', 'err'); lg('Blog generation failed: ' + res.text, 'e'); }
+    else {
+      const finalWc = res.text.split(/\s+/).filter(w => w.length > 0).length;
+      setS('generateBlog', `${finalWc} words`, 'done'); bump(); lg(`Blog completed: ${finalWc} words.`, 'o');
+    }
+  }
+
+  async function taskSocial() {
+    setS('socialCopy', 'writing...', 'active');
+    lg('Generating LinkedIn Post from approved blog...', 'i');
+    const sourceBlog = (R.generateBlog && !R.generateBlog.err) ? R.generateBlog.text : ctx;
+    const prompt = `You are a B2B technical content strategist with 20+ years of experience writing LinkedIn posts for Tempsens (tempsens.com). You understand what makes industrial professionals stop scrolling.
+
+Using the approved blog below about "${topic}", extract the single most interesting insight and write a LinkedIn post. Do NOT summarize the blog. Find the one thing that would make an engineer or plant manager think "I need to share this."
+
+APPROVED SOURCE BLOG:
+${sourceBlog.substring(0, 3500)}
+
+RULES:
+- Write like a real person with decades of experience, not a marketing team.
+- Natural conversational tone. Use contractions. Grade 9 language.
+- NO buzzwords: "revolutionary", "game-changing", "leverage", "synergy".
+- One idea per paragraph. 1-2 sentence paragraphs. Plenty of white space.
+- Length: 150-300 words depending on topic complexity.
+- Structure: Strong hook → Unexpected observation → Supporting detail → Takeaway → Engaging question
+- End with ONE specific question that sparks real discussion (not generic "Thoughts?" or "Agree?").
+- Reference tempsens.com perspective naturally where it fits.`;
+
+    const res = await callLLMWithRetry(prompt, TEMPSENS_SYSTEM_PROMPT);
+    R.socialCopy = res;
+    if (res.err) { setS('socialCopy', 'failed', 'err'); lg('LinkedIn post failed: ' + res.text, 'e'); }
+    else { setS('socialCopy', 'completed', 'done'); bump(); lg('LinkedIn post completed.', 'o'); }
+  }
+
+  async function taskEmail() {
+    setS('emailNewsletter', 'drafting...', 'active');
+    lg('Generating Email Newsletter from approved blog...', 'i');
+    const sourceBlog = (R.generateBlog && !R.generateBlog.err) ? R.generateBlog.text : ctx;
+    const prompt = `You are a B2B technical content strategist with 20+ years of experience writing email newsletters for Tempsens (tempsens.com). You write newsletters that engineers and plant managers actually read — not marketing emails they delete.
+
+Using the approved blog below about "${topic}", write a weekly newsletter. It should feel like getting a valuable insight from a trusted colleague.
+
+APPROVED SOURCE BLOG:
+${sourceBlog.substring(0, 3500)}
+
+RULES:
+- 350-600 words. Natural conversational tone. Grade 9 language.
+- Write like a real person — use contractions, personal observations, specific examples.
+- NO buzzwords. NO "Welcome back". NO "I hope you're doing well".
+- Reference tempsens.com as the brand naturally.
+
+STRUCTURE:
+**Subject line** — One compelling line about "${topic}". Create curiosity or challenge an assumption. No clickbait, no ALL CAPS.
+
+**Preview text** — One line, max 80 characters. Supports subject line.
+
+**Opening** — Start with an observation, question, or real scenario about "${topic}".
+
+**Core insight** — One key concept explained with practical examples. Short paragraphs.
+
+**Closing insight** — Memorable takeaway the reader can use immediately.
+
+**CTA** — One engaging question encouraging conversation (NOT "Contact us" or "Book a demo").`;
+
+    const res = await callLLMWithRetry(prompt, TEMPSENS_SYSTEM_PROMPT);
+    R.emailNewsletter = res;
+    if (res.err) { setS('emailNewsletter', 'failed', 'err'); lg('Newsletter failed: ' + res.text, 'e'); }
+    else { setS('emailNewsletter', 'completed', 'done'); bump(); lg('Newsletter completed.', 'o'); }
+  }
+
+  async function taskBlogImagePrompts() {
+    const src = (R.generateBlog && !R.generateBlog.err) ? R.generateBlog.text : ctx;
+    await writeImagePrompts('blogImagePrompts', 'blog', src, 3, 'landscape', {width:1200,height:675});
+  }
+
+  async function taskSocialImagePrompts() {
+    const src = (R.socialCopy && !R.socialCopy.err) ? R.socialCopy.text : ctx;
+    await writeImagePrompts('socialImagePrompts', 'social', src, 2, 'square', {width:1080,height:1080});
+  }
+
+  async function taskEmailImagePrompts() {
+    const src = (R.emailNewsletter && !R.emailNewsletter.err) ? R.emailNewsletter.text : ctx;
+    await writeImagePrompts('emailImagePrompts', 'email', src, 2, 'landscape', {width:1200,height:675});
+  }
+
+  lg('Step 1/3: Generating comprehensive SEO Blog (1200+ words)...', 'i');
+  await taskBlog();
+  if (R.generateBlog && !R.generateBlog.err) {
+    const wc = R.generateBlog.text.split(/\s+/).length;
+    lg(`Validated Blog Length: ${wc} words. Using approved blog as source for social & newsletter...`, 'o');
+  }
+
+  // Image prompt nodes: wrapped in try/catch so API flakiness doesn't block the pipeline
+  try { await taskBlogImagePrompts(); } catch(e) { lg('Blog image prompts skipped (API issue): ' + e.message, 'e'); setS('blogImagePrompts', 'skipped', 'err'); }
+  await taskSocial();
+  try { await taskSocialImagePrompts(); } catch(e) { lg('Social image prompts skipped (API issue): ' + e.message, 'e'); setS('socialImagePrompts', 'skipped', 'err'); }
+  await taskEmail();
+  try { await taskEmailImagePrompts(); } catch(e) { lg('Email image prompts skipped (API issue): ' + e.message, 'e'); setS('emailImagePrompts', 'skipped', 'err'); }
+
+  uS('Pipeline Complete', 'g');
+  toast('All nodes completed!');
+  stopPipeline();
+  showOut('generateBlog');
+}
+
+function stopPipeline() {
+  running = false;
+  document.getElementById('startBtn').disabled = false;
+}
+
+function resetPipeline() {
+  running = false;
+  R = {};
+  document.getElementById('startBtn').disabled = false;
+  Object.keys(T).forEach(id => setS(id, 'idle', null));
+  uS('Ready', 'g');
+  document.getElementById('aC').textContent = '0';
+  document.getElementById('apiS').textContent = 'AI: Idle';
+  closeP();
+  document.getElementById('log').innerHTML = '';
+}
+
+// ═══════════════════════════════════════
+// Output Panel
+// ═══════════════════════════════════════
+let currentOutput = '';
+
+function showOut(id) {
+  const p = document.getElementById('panel');
+  const ti = document.getElementById('pT');
+  const bo = document.getElementById('pB');
+  const cp = document.getElementById('pCopy');
+  const n = T[id];
+  if (!n) return;
+  const r = R[id];
+
+  ti.innerHTML = `<span>${n.icon} ${n.label}</span>`;
+  cp.style.display = 'none';
+
+  if (r) {
+    currentOutput = r.text || '';
+    if (currentOutput) cp.style.display = 'inline-block';
+
+    let html = `<p style="color:var(--green);font-weight:600;margin-bottom:10px">&#10003; Completed</p>`;
+
+    if (['generateBlog','socialCopy','emailNewsletter'].includes(id)) {
+      let md = r.text;
+      if (typeof marked !== 'undefined') md = marked.parse(md);
+      else md = esc(r.text).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      html += `<div class="markdown-body" style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px">${md}</div>`;
+    } else if (['blogImagePrompts','socialImagePrompts','emailImagePrompts'].includes(id)) {
+      const imagePrompts = r.imagePrompts || [];
+      html += `<p style="font-size:12px;color:var(--accent2);font-weight:600;margin-bottom:12px">\u{1F4CB} ${imagePrompts.length} Image Prompt${imagePrompts.length!==1?'s':''} Written</p>`;
+      html += `<p style="font-size:11px;color:var(--text3);margin-bottom:16px">Structured JSON prompts derived from the content. Use with any image generation tool (Midjourney, DALL-E, Flux, Stable Diffusion, etc.)</p>`;
+      imagePrompts.forEach((ip) => {
+        html += `<div style="margin-bottom:16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px">`;
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">`;
+        html += `<span style="font-size:13px;font-weight:600;color:var(--text)">${esc(ip.purpose || ip.id)}</span>`;
+        html += `<span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">${ip.dimensions?.width||'—'}\u00d7${ip.dimensions?.height||'—'} \u00b7 ${ip.format||'—'}</span>`;
+        html += `</div>`;
+        html += `<pre style="white-space:pre-wrap;word-wrap:break-word;font-size:11px;padding:12px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;color:var(--cyan);font-family:'JetBrains Mono',monospace;margin-bottom:10px">${esc(ip.prompt)}</pre>`;
+        const safePrompt = encodeURIComponent(ip.prompt);
+        html += `<button style="display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:7px 12px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),#059669);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s" onclick="navigator.clipboard.writeText(decodeURIComponent('${safePrompt}'));toast('Prompt copied!')">\u{1F4CB} Copy Prompt</button>`;
+        html += `</div>`;
+      });
+      const jsonStr = encodeURIComponent(JSON.stringify(imagePrompts, null, 2));
+      html += `<button style="display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;width:100%;padding:7px 12px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--blue),var(--violet));color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s" onclick="navigator.clipboard.writeText(decodeURIComponent('${jsonStr}'));toast('All prompts copied as JSON!')">\u{1F4E6} Copy All as JSON</button>`;
+    } else {
+      html += `<pre style="white-space:pre-wrap;word-wrap:break-word;font-size:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text2)">${esc(r.text)}</pre>`;
+    }
+    bo.innerHTML = html;
+  } else {
+    bo.innerHTML = `<p style="color:var(--text3)">${n.d || 'Waiting for execution...'}</p>`;
+  }
+  p.classList.add('open');
+}
+
+function copyP() {
+  navigator.clipboard.writeText(currentOutput).then(() => toast('Copied to clipboard!'));
+}
+
+function closeP() { document.getElementById('panel').classList.remove('open'); }
+
+// ═══════════════════════════════════════
+// Touch / Zoom / Resize
+// ═══════════════════════════════════════
+(function() {
+  const board = document.getElementById('board');
+  let sx, sy, pd0, pz0, dragging = false;
+
+  function dist(ts) { return Math.hypot(ts[0].clientX-ts[1].clientX, ts[0].clientY-ts[1].clientY); }
+
+  board.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) { pd0 = dist(e.touches); pz0 = zoom; dragging = false; }
+    else if (e.touches.length === 1 && !isMobile()) { dragging = true; sx = e.touches[0].clientX-panX; sy = e.touches[0].clientY-panY; }
+  }, { passive:true });
+
+  board.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) { e.preventDefault(); zoom = Math.max(0.3,Math.min(1.8,pz0*(dist(e.touches)/pd0))); applyTransform(); }
+    else if (e.touches.length === 1 && dragging && !isMobile()) { panX = e.touches[0].clientX-sx; panY = e.touches[0].clientY-sy; applyTransform(); }
+  }, { passive:false });
+
+  board.addEventListener('touchend', () => { dragging = false; }, { passive:true });
+
+  board.addEventListener('wheel', e => {
+    e.preventDefault();
+    zoom = Math.max(0.3, Math.min(1.8, zoom + (e.deltaY > 0 ? -0.05 : 0.05)));
+    applyTransform();
+  }, { passive:false });
+})();
+
+let resizeTimer;
+function onResize() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { renderNodes(); setTimeout(() => drawLines(animOffset), 100); }, 150);
+}
+
+// ═══════════════════════════════════════
+// Init
+// ═══════════════════════════════════════
+window.addEventListener('load', () => {
+  buildConnections();
+  renderNodes();
+  startLineAnimation();
+  lg('Pipeline ready. 9 nodes configured.', 'o');
+});
+
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 300));
+</script>
+</body>
+</html>
